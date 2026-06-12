@@ -5,6 +5,7 @@ import java.awt.datatransfer.Clipboard;
 import java.awt.datatransfer.DataFlavor;
 import java.awt.datatransfer.StringSelection;
 import java.awt.datatransfer.Transferable;
+import java.awt.datatransfer.UnsupportedFlavorException;
 import java.awt.event.KeyEvent;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -81,12 +82,15 @@ public class MathKeyboard {
         for (String[] it : items) {
             String sym = it[0];
             String desc = it.length > 1 ? it[1] : "";
+            String fontFamily = it.length > 2 ? it[2] : "Cambria Math";
+            int sizePt = it.length > 3 ? Integer.parseInt(it[3]) : 14;
             JButton b = new JButton(sym);
             b.setFont(font);
             b.setFocusable(false);                 // 按鈕不可取得焦點
             b.setMargin(new Insets(6, 4, 6, 4));
-            b.setToolTipText(desc.isEmpty() ? sym : sym + "　" + desc);  // 滑鼠移上顯示中文說明
-            b.addActionListener(e -> insertSymbol(sym));
+            // 滑鼠移上顯示中文說明 + 將貼上的字型/大小
+            b.setToolTipText(sym + "　" + desc + "（" + fontFamily + " " + sizePt + "pt）");
+            b.addActionListener(e -> insertSymbol(sym, fontFamily, sizePt));
             grid.add(b);
         }
 
@@ -101,8 +105,12 @@ public class MathKeyboard {
         return wrapper;
     }
 
-    /** 把符號送到目前焦點所在的輸入框 */
-    private static void insertSymbol(String symbol) {
+    /**
+     * 把符號送到目前焦點所在的輸入框，並帶上指定字型/大小的格式。
+     * 作法：把帶 CSS 字型樣式的 HTML 放進剪貼簿，Word / Google Docs 貼上時會套用該字型與大小。
+     * 同時也提供純文字版本，貼到不支援格式的純文字欄位時仍能正常插入符號。
+     */
+    private static void insertSymbol(String symbol, String fontFamily, int sizePt) {
         Clipboard clip = Toolkit.getDefaultToolkit().getSystemClipboard();
 
         // 先保存原本的剪貼簿內容（若為文字）
@@ -115,8 +123,14 @@ public class MathKeyboard {
         } catch (Exception ignored) {
         }
 
-        // 放入要插入的符號
-        clip.setContents(new StringSelection(symbol), null);
+        // 組出帶字型/大小的 HTML；中文字型同時給西文與中文名稱以利對應
+        String cssFamily = fontFamily.equals("新細明體") ? "'PMingLiU','新細明體'" : "'" + fontFamily + "'";
+        String html = "<html><body><!--StartFragment--><span style=\"font-family:" + cssFamily
+                + "; font-size:" + sizePt + "pt;\">" + escapeHtml(symbol)
+                + "</span><!--EndFragment--></body></html>";
+
+        // 放入剪貼簿（HTML + 純文字兩種格式）
+        clip.setContents(new HtmlAndText(html, symbol), null);
 
         // 模擬 Ctrl+V 貼到目標程式
         robot.keyPress(KeyEvent.VK_CONTROL);
@@ -138,6 +152,47 @@ public class MathKeyboard {
         }
     }
 
+    private static String escapeHtml(String s) {
+        return s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;");
+    }
+
+    /** 同時提供 HTML（帶格式）與純文字兩種剪貼簿格式 */
+    private static final class HtmlAndText implements Transferable {
+        private static final DataFlavor[] FLAVORS = {
+                DataFlavor.allHtmlFlavor,
+                DataFlavor.fragmentHtmlFlavor,
+                DataFlavor.selectionHtmlFlavor,
+                DataFlavor.stringFlavor
+        };
+        private final String html;
+        private final String plain;
+
+        HtmlAndText(String html, String plain) {
+            this.html = html;
+            this.plain = plain;
+        }
+
+        @Override
+        public DataFlavor[] getTransferDataFlavors() {
+            return FLAVORS.clone();
+        }
+
+        @Override
+        public boolean isDataFlavorSupported(DataFlavor flavor) {
+            for (DataFlavor f : FLAVORS) {
+                if (f.equals(flavor)) return true;
+            }
+            return false;
+        }
+
+        @Override
+        public Object getTransferData(DataFlavor flavor) throws UnsupportedFlavorException {
+            if (flavor.equals(DataFlavor.stringFlavor)) return plain;
+            if ("text".equals(flavor.getPrimaryType()) && "html".equals(flavor.getSubType())) return html;
+            throw new UnsupportedFlavorException(flavor);
+        }
+    }
+
     /** 找一個能完整顯示數學符號的字型 */
     private static Font pickSymbolFont(float size) {
         String[] prefer = {"Segoe UI Symbol", "Segoe UI", "Cambria Math",
@@ -153,34 +208,53 @@ public class MathKeyboard {
         return new Font(Font.SANS_SERIF, Font.PLAIN, (int) size);
     }
 
-    /** 各分類的數學符號（內容對照 symbols.docx）：每筆為 {符號, 中文說明} */
+    /**
+     * 各分類的數學符號（內容/字型/大小皆對照 symbols.docx）。
+     * 每筆為 {符號, 中文說明, 字型, 大小pt}。貼上時會帶這個字型與大小。
+     */
     private static Map<String, String[][]> categories() {
         Map<String, String[][]> m = new LinkedHashMap<>();
 
         m.put("常用符號", new String[][]{
-                {"±", "正負號"}, {"×", "乘號"}, {"÷", "除號"}, {"≠", "不等於"}, {"≒", "約等於"},
-                {"√", "根號"}, {"π", "圓周率"}, {"°", "度"}, {"φ", "黃金比例"}
+                {"±", "正負號", "Times New Roman", "12"}, {"×", "乘號", "Times New Roman", "12"},
+                {"÷", "除號", "新細明體", "12"}, {"≠", "不等於", "新細明體", "12"},
+                {"≒", "約等於", "新細明體", "12"}, {"√", "根號", "Cambria Math", "14"},
+                {"π", "圓周率", "Cambria Math", "14"}, {"°", "度", "Times New Roman", "12"},
+                {"φ", "黃金比例", "Cambria Math", "14"}
         });
 
         m.put("比較與邏輯", new String[][]{
-                {"≤", "小於等於"}, {"≥", "大於等於"}, {"≡", "恆等於"}, {"∝", "正比於"}, {"∴", "所以"},
-                {"∵", "因為"}, {"⇒", "蘊含"}, {"⇔", "若且唯若"}, {"∀", "對所有"}, {"∃", "存在"}
+                {"≤", "小於等於", "Times New Roman", "12"}, {"≥", "大於等於", "Times New Roman", "12"},
+                {"≡", "恆等於", "Times New Roman", "12"}, {"∝", "正比於", "Cambria Math", "14"},
+                {"∴", "所以", "Times New Roman", "12"}, {"∵", "因為", "新細明體", "12"},
+                {"⇒", "蘊含", "Cambria Math", "14"}, {"⇔", "若且唯若", "Cambria Math", "14"},
+                {"∀", "對所有", "Cambria Math", "14"}, {"∃", "存在", "Cambria Math", "14"}
         });
 
         m.put("集合", new String[][]{
-                {"∈", "屬於"}, {"∉", "不屬於"}, {"⊂", "真子集"}, {"⊆", "子集"}, {"∪", "聯集"},
-                {"∩", "交集"}, {"∅", "空集合"}, {"ℝ", "實數集"}, {"ℤ", "整數集"}, {"ℕ", "自然數集"}
+                {"∈", "屬於", "Cambria Math", "14"}, {"∉", "不屬於", "Cambria Math", "14"},
+                {"⊂", "真子集", "Cambria Math", "14"}, {"⊆", "子集", "Cambria Math", "14"},
+                {"∪", "聯集", "Cambria Math", "14"}, {"∩", "交集", "Cambria Math", "14"},
+                {"∅", "空集合", "Cambria Math", "14"}, {"ℝ", "實數集", "Cambria Math", "14"},
+                {"ℤ", "整數集", "Cambria Math", "14"}, {"ℕ", "自然數集", "Cambria Math", "14"}
         });
 
         m.put("微積分", new String[][]{
-                {"∫", "積分"}, {"∬", "二重積分"}, {"∭", "三重積分"}, {"∮", "曲線積分"}, {"∂", "偏微分"},
-                {"∇", "梯度"}, {"∑", "求和"}, {"∏", "連乘"}, {"→", "趨近"}, {"∆", "差分"}
+                {"∫", "積分", "Cambria Math", "16"}, {"∬", "二重積分", "Cambria Math", "16"},
+                {"∭", "三重積分", "Cambria Math", "16"}, {"∮", "曲線積分", "Cambria Math", "16"},
+                {"∂", "偏微分", "Cambria Math", "14"}, {"∇", "梯度", "Cambria Math", "14"},
+                {"∑", "求和", "Cambria Math", "16"}, {"∏", "連乘", "Cambria Math", "16"},
+                {"→", "趨近", "Cambria Math", "14"}, {"∆", "差分", "Cambria Math", "14"}
         });
 
         m.put("希臘字母", new String[][]{
-                {"α", "alpha"}, {"β", "beta"}, {"γ", "gamma"}, {"δ", "delta"}, {"θ", "theta"},
-                {"λ", "lambda"}, {"μ", "mu"}, {"σ", "sigma"}, {"φ", "phi"}, {"ω", "omega"},
-                {"Δ", "Delta 大寫"}, {"Σ", "Sigma 大寫"}, {"Ω", "Omega 大寫"}, {"Π", "Pi 大寫"}
+                {"α", "alpha", "Cambria Math", "14"}, {"β", "beta", "Cambria Math", "14"},
+                {"γ", "gamma", "Cambria Math", "14"}, {"δ", "delta", "Cambria Math", "14"},
+                {"θ", "theta", "Cambria Math", "14"}, {"λ", "lambda", "Cambria Math", "14"},
+                {"μ", "mu", "Cambria Math", "14"}, {"σ", "sigma", "Cambria Math", "14"},
+                {"φ", "phi", "Cambria Math", "14"}, {"ω", "omega", "Cambria Math", "14"},
+                {"Δ", "Delta 大寫", "Cambria Math", "14"}, {"Σ", "Sigma 大寫", "Cambria Math", "16"},
+                {"Ω", "Omega 大寫", "Cambria Math", "14"}, {"Π", "Pi 大寫", "Cambria Math", "16"}
         });
 
         return m;
