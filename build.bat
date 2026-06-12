@@ -31,13 +31,15 @@ if errorlevel 1 (
 )
 
 echo [4/4] 用 jpackage 產生 exe（app-image，免安裝、解壓即用）...
+REM 注意：--dest 不能放在 --input 底下，否則 jpackage 會掃到自己造成無限遞迴
+if exist appimage rmdir /s /q appimage
 jpackage ^
   --type app-image ^
   --name MathKeyboard ^
   --input dist ^
   --main-jar MathKeyboard.jar ^
   --main-class MathKeyboard ^
-  --dest dist\app ^
+  --dest appimage ^
   --java-options "-Dfile.encoding=UTF-8"
 if errorlevel 1 (
     echo jpackage 失敗，請確認使用的是 JDK 17+（jpackage 內建）。

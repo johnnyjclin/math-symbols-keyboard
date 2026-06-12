@@ -1,4 +1,5 @@
 out/
 dist/
+appimage/
 *.class
 .DS_Store

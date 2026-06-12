@@ -30,6 +30,7 @@ jobs:
           jar --create --file dist/MathKeyboard.jar --main-class MathKeyboard -C out .
 
       - name: 用 jpackage 產生免安裝 exe (app-image)
+        # 注意：--dest 不能放在 --input 底下，否則 jpackage 會掃到自己造成無限遞迴
         run: |
           jpackage `
             --type app-image `
@@ -37,14 +38,14 @@ jobs:
             --input dist `
             --main-jar MathKeyboard.jar `
             --main-class MathKeyboard `
-            --dest dist/app `
+            --dest appimage `
             --java-options "-Dfile.encoding=UTF-8"
 
       - name: 上傳 exe（壓成 zip 的免安裝資料夾）
         uses: actions/upload-artifact@v4
         with:
           name: MathKeyboard-windows
-          path: dist/app/MathKeyboard
+          path: appimage/MathKeyboard
           # 下載後解壓，雙擊 MathKeyboard.exe 即可使用（免裝 Java）
 
       - name: 也上傳可執行 JAR（任何裝了 Java 的系統都能跑）

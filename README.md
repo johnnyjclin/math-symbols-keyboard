@@ -38,7 +38,7 @@ jpackage --version
 
 雙擊 **`build.bat`**（或在 cmd 執行）。完成後產物：
 
-- 免安裝版：`dist\app\MathKeyboard\MathKeyboard.exe` ← **雙擊就能跑**
+- 免安裝版：`appimage\MathKeyboard\MathKeyboard.exe` ← **雙擊就能跑**
   （整個 `MathKeyboard` 資料夾複製到任何 Windows 都能用，免裝 Java）
 - 可執行 JAR：`dist\MathKeyboard.jar`
 
