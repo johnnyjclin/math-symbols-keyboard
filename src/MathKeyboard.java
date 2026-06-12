@@ -56,7 +56,7 @@ public class MathKeyboard {
 
         Font symbolFont = pickSymbolFont(20f);
 
-        for (Map.Entry<String, String[]> cat : categories().entrySet()) {
+        for (Map.Entry<String, String[][]> cat : categories().entrySet()) {
             tabs.addTab(cat.getKey(), buildPanel(cat.getValue(), symbolFont));
         }
 
@@ -73,18 +73,20 @@ public class MathKeyboard {
         frame.setVisible(true);
     }
 
-    private static JPanel buildPanel(String[] symbols, Font font) {
-        JPanel grid = new JPanel(new GridLayout(0, 10, 4, 4));
+    private static JPanel buildPanel(String[][] items, Font font) {
+        JPanel grid = new JPanel(new GridLayout(0, 5, 6, 6));
         grid.setBorder(new EmptyBorder(8, 8, 8, 8));
         grid.setFocusable(false);
 
-        for (String s : symbols) {
-            JButton b = new JButton(s);
+        for (String[] it : items) {
+            String sym = it[0];
+            String desc = it.length > 1 ? it[1] : "";
+            JButton b = new JButton(sym);
             b.setFont(font);
             b.setFocusable(false);                 // 按鈕不可取得焦點
-            b.setMargin(new Insets(2, 2, 2, 2));
-            b.setToolTipText(s);
-            b.addActionListener(e -> insertSymbol(s));
+            b.setMargin(new Insets(6, 4, 6, 4));
+            b.setToolTipText(desc.isEmpty() ? sym : sym + "　" + desc);  // 滑鼠移上顯示中文說明
+            b.addActionListener(e -> insertSymbol(sym));
             grid.add(b);
         }
 
@@ -151,65 +153,34 @@ public class MathKeyboard {
         return new Font(Font.SANS_SERIF, Font.PLAIN, (int) size);
     }
 
-    /** 各分類的數學符號 */
-    private static Map<String, String[]> categories() {
-        Map<String, String[]> m = new LinkedHashMap<>();
+    /** 各分類的數學符號（內容對照 symbols.docx）：每筆為 {符號, 中文說明} */
+    private static Map<String, String[][]> categories() {
+        Map<String, String[][]> m = new LinkedHashMap<>();
 
-        m.put("基本", new String[]{
-                "+", "−", "×", "÷", "±", "∓", "·", "∗", "⋅", "⊕",
-                "=", "≠", "≈", "≡", "≜", "≅", "∝", "∼", "≃", "⊗",
-                "<", ">", "≤", "≥", "≪", "≫", "≦", "≧", "⋚", "⋛",
-                "%", "‰", "°", "′", "″", "‴", "∶", "∷", "∝", "∞"
+        m.put("常用符號", new String[][]{
+                {"±", "正負號"}, {"×", "乘號"}, {"÷", "除號"}, {"≠", "不等於"}, {"≒", "約等於"},
+                {"√", "根號"}, {"π", "圓周率"}, {"°", "度"}, {"φ", "黃金比例"}
         });
 
-        m.put("希臘小寫", new String[]{
-                "α", "β", "γ", "δ", "ε", "ζ", "η", "θ", "ι", "κ",
-                "λ", "μ", "ν", "ξ", "ο", "π", "ρ", "σ", "τ", "υ",
-                "φ", "χ", "ψ", "ω", "ϵ", "ϑ", "ϖ", "ϱ", "ς", "ϕ"
+        m.put("比較與邏輯", new String[][]{
+                {"≤", "小於等於"}, {"≥", "大於等於"}, {"≡", "恆等於"}, {"∝", "正比於"}, {"∴", "所以"},
+                {"∵", "因為"}, {"⇒", "蘊含"}, {"⇔", "若且唯若"}, {"∀", "對所有"}, {"∃", "存在"}
         });
 
-        m.put("希臘大寫", new String[]{
-                "Α", "Β", "Γ", "Δ", "Ε", "Ζ", "Η", "Θ", "Ι", "Κ",
-                "Λ", "Μ", "Ν", "Ξ", "Ο", "Π", "Ρ", "Σ", "Τ", "Υ",
-                "Φ", "Χ", "Ψ", "Ω", "∇", "∂", "∆", "℧", "ℵ", "ℶ"
+        m.put("集合", new String[][]{
+                {"∈", "屬於"}, {"∉", "不屬於"}, {"⊂", "真子集"}, {"⊆", "子集"}, {"∪", "聯集"},
+                {"∩", "交集"}, {"∅", "空集合"}, {"ℝ", "實數集"}, {"ℤ", "整數集"}, {"ℕ", "自然數集"}
         });
 
-        m.put("微積分", new String[]{
-                "∫", "∬", "∭", "⨌", "∮", "∯", "∰", "∂", "∇", "∆",
-                "∑", "∏", "∐", "√", "∛", "∜", "∞", "′", "″", "‴",
-                "lim", "→", "∂x", "dx", "dy", "dt", "𝑑", "ℯ", "ℰ", "∝"
+        m.put("微積分", new String[][]{
+                {"∫", "積分"}, {"∬", "二重積分"}, {"∭", "三重積分"}, {"∮", "曲線積分"}, {"∂", "偏微分"},
+                {"∇", "梯度"}, {"∑", "求和"}, {"∏", "連乘"}, {"→", "趨近"}, {"∆", "差分"}
         });
 
-        m.put("集合 / 邏輯", new String[]{
-                "∈", "∉", "∋", "∌", "⊂", "⊃", "⊆", "⊇", "⊄", "⊅",
-                "∪", "∩", "∅", "∖", "△", "⊎", "⊓", "⊔", "℘", "∁",
-                "∀", "∃", "∄", "¬", "∧", "∨", "⊻", "⊼", "⊽", "⊕",
-                "⇒", "⇐", "⇔", "→", "←", "↔", "⊢", "⊨", "∴", "∵"
-        });
-
-        m.put("箭頭", new String[]{
-                "→", "←", "↑", "↓", "↔", "↕", "↗", "↘", "↙", "↖",
-                "⇒", "⇐", "⇑", "⇓", "⇔", "⇕", "↦", "↤", "⟶", "⟵",
-                "⟹", "⟸", "⟺", "⇀", "↼", "⇌", "⇄", "↻", "↺", "⊸"
-        });
-
-        m.put("關係 / 幾何", new String[]{
-                "∠", "∡", "∢", "⊥", "∥", "∦", "≮", "≯", "≰", "≱",
-                "≺", "≻", "⪯", "⪰", "⊏", "⊐", "⊑", "⊒", "≜", "≐",
-                "∝", "∣", "∤", "⋈", "⊿", "▱", "◯", "△", "□", "∆"
-        });
-
-        m.put("字母符號", new String[]{
-                "ℝ", "ℕ", "ℤ", "ℚ", "ℂ", "ℙ", "𝔽", "ℍ", "ℵ", "ℶ",
-                "ℓ", "ℏ", "℘", "ℑ", "ℜ", "∁", "∅", "∞", "⊤", "⊥",
-                "⌊", "⌋", "⌈", "⌉", "⟨", "⟩", "‖", "…", "⋯", "⋮"
-        });
-
-        m.put("上下標", new String[]{
-                "⁰", "¹", "²", "³", "⁴", "⁵", "⁶", "⁷", "⁸", "⁹",
-                "⁺", "⁻", "⁼", "⁽", "⁾", "ⁿ", "ⁱ", "ª", "º", "ˣ",
-                "₀", "₁", "₂", "₃", "₄", "₅", "₆", "₇", "₈", "₉",
-                "₊", "₋", "₌", "₍", "₎", "ₐ", "ₑ", "ₓ", "ₙ", "ₖ"
+        m.put("希臘字母", new String[][]{
+                {"α", "alpha"}, {"β", "beta"}, {"γ", "gamma"}, {"δ", "delta"}, {"θ", "theta"},
+                {"λ", "lambda"}, {"μ", "mu"}, {"σ", "sigma"}, {"φ", "phi"}, {"ω", "omega"},
+                {"Δ", "Delta 大寫"}, {"Σ", "Sigma 大寫"}, {"Ω", "Omega 大寫"}, {"Π", "Pi 大寫"}
         });
 
         return m;
