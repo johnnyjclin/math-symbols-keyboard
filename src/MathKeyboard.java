@@ -116,11 +116,14 @@ public class MathKeyboard {
         // 放入要插入的符號
         clip.setContents(new StringSelection(symbol), null);
 
-        // 模擬 Ctrl+V 貼到目標程式
-        robot.keyPress(KeyEvent.VK_CONTROL);
+        // 依作業系統選貼上快捷鍵：Mac 用 Cmd+V、Windows/Linux 用 Ctrl+V
+        boolean isMac = System.getProperty("os.name", "").toLowerCase().contains("mac");
+        int pasteModifier = isMac ? KeyEvent.VK_META : KeyEvent.VK_CONTROL;
+
+        robot.keyPress(pasteModifier);
         robot.keyPress(KeyEvent.VK_V);
         robot.keyRelease(KeyEvent.VK_V);
-        robot.keyRelease(KeyEvent.VK_CONTROL);
+        robot.keyRelease(pasteModifier);
 
         // 稍後把原本的剪貼簿內容還原，避免覆蓋使用者剪貼簿
         if (previous != null) {
