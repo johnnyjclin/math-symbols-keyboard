@@ -1,0 +1,54 @@
+name: Build Windows EXE
+
+# 觸發時機：push 到 main、手動點按鈕、或發 tag 時
+on:
+  push:
+    branches: [ main ]
+    tags: [ 'v*' ]
+  workflow_dispatch:        # 允許在 Actions 頁面手動執行
+
+jobs:
+  build:
+    runs-on: windows-latest   # 用 GitHub 免費的 Windows 機器
+
+    steps:
+      - name: 取出原始碼
+        uses: actions/checkout@v4
+
+      - name: 安裝 JDK 17 (含 jpackage)
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: 編譯
+        run: javac -encoding UTF-8 -d out src/MathKeyboard.java
+
+      - name: 打包可執行 JAR
+        run: |
+          mkdir dist
+          jar --create --file dist/MathKeyboard.jar --main-class MathKeyboard -C out .
+
+      - name: 用 jpackage 產生免安裝 exe (app-image)
+        run: |
+          jpackage `
+            --type app-image `
+            --name MathKeyboard `
+            --input dist `
+            --main-jar MathKeyboard.jar `
+            --main-class MathKeyboard `
+            --dest dist/app `
+            --java-options "-Dfile.encoding=UTF-8"
+
+      - name: 上傳 exe（壓成 zip 的免安裝資料夾）
+        uses: actions/upload-artifact@v4
+        with:
+          name: MathKeyboard-windows
+          path: dist/app/MathKeyboard
+          # 下載後解壓，雙擊 MathKeyboard.exe 即可使用（免裝 Java）
+
+      - name: 也上傳可執行 JAR（任何裝了 Java 的系統都能跑）
+        uses: actions/upload-artifact@v4
+        with:
+          name: MathKeyboard-jar
+          path: dist/MathKeyboard.jar
